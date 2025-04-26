@@ -10,16 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 /// - **HS256**: Uses a secret key (string) for signing the JWT.
 /// - **RS256**: Uses a pair of RSA public and private keys for signing and verifying the JWT.
 pub enum JwtAlgorithm {
-    /// HS256 algorithm uses a secret key (string) to sign the JWT.
-    ///
-    /// - `access_secret`: The secret key for signing the access token.
-    /// - `refresh_secret`: The secret key for signing the refresh token.
-    HS256 {
-        /// Secret key for signing the access token
-        access_secret: String,
-        /// Secret key for signing the refresh token
-        refresh_secret: String,
-    },
 
     /// RS256 algorithm uses a pair of RSA private and public keys to sign and verify the JWT.
     ///
@@ -39,10 +29,34 @@ pub enum JwtAlgorithm {
     },
 }
 
-trait JwtKeyPair: Send + Sync {
-    fn generate_token(&self, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String>;
+/// The `JwtKeyPair` trait defines the methods for generating and decoding JWTs.
+///
+/// It is intended to be implemented by types that manage JWT key pairs (either symmetric or asymmetric),
+/// allowing them to generate and decode JWT tokens for both access and refresh tokens.
+pub trait JwtKeyPair: Send + Sync {
+    /// Generates a JWT token with the given claims and an expiration time.
+    ///
+    /// - `sub`: The subject (usually the user ID or identifier) for the JWT.
+    /// - `expires_in`: The expiration time for the JWT in seconds.
+    /// - `extra`: Optional extra custom claims to include in the JWT.
+    /// - `is_access`: Boolean indicating whether the token is an access token (`true`) or a refresh token (`false`).
+    ///
+    /// Returns a `Result<String>`, where the `String` is the generated JWT token.
+    ///
+    /// # Errors
+    /// If there is an error generating the token (e.g., due to key issues), it returns an `Err` result.
+    fn generate_token(&self, kid: &str, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String>;
 
-    fn decode_token(&self, token: &str, is_access: bool) -> Result<TokenData<Claims>>;
+    /// Decodes a JWT token and returns its claims.
+    ///
+    /// - `token`: The JWT token string to decode.
+    /// - `is_access`: Boolean indicating whether the token is an access token (`true`) or a refresh token (`false`).
+    ///
+    /// Returns a `Result<TokenData<Claims>>`, where `TokenData<Claims>` contains the decoded claims data.
+    ///
+    /// # Errors
+    /// If the token cannot be decoded (e.g., due to an invalid token or signature), it returns an `Err` result.
+    fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>>;
 }
 
 pub struct JwtKeys {
@@ -51,10 +65,7 @@ pub struct JwtKeys {
 
 impl JwtKeys {
     pub fn from_algorithm(algo: JwtAlgorithm) -> Result<Self> {
-        match algo {
-            JwtAlgorithm::HS256 { access_secret, refresh_secret } => Ok(Self {
-                backend: Box::new(Hs256KeyPair { access_secret, refresh_secret }),
-            }),
+        match algo { 
             JwtAlgorithm::RS256 {
                 access_private,
                 access_public,
@@ -71,70 +82,16 @@ impl JwtKeys {
         }
     }
 
-    pub fn generate_access_token(&self, user_id: &str, expires_in: usize, extra: Option<HashMap<String, Value>>) -> Result<String> {
-        self.backend.generate_token(user_id, expires_in, extra, true)
+    pub fn generate_access_token(&self, kid: &str, user_id: &str, expires_in: usize, extra: Option<HashMap<String, Value>>) -> Result<String> {
+        self.backend.generate_token(kid, user_id, expires_in, extra, true)
     }
 
-    pub fn generate_refresh_token(&self, user_id: &str, expires_in: usize, extra: Option<HashMap<String, Value>>) -> Result<String> {
-        self.backend.generate_token(user_id, expires_in, extra, false)
+    pub fn generate_refresh_token(&self, kid: &str, user_id: &str, expires_in: usize, extra: Option<HashMap<String, Value>>) -> Result<String> {
+        self.backend.generate_token(kid, user_id, expires_in, extra, false)
     }
 
     pub fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>> {
-        let is_access = match token_type {
-            "access" => true,
-            "refresh" => false,
-            _ => {
-                return Err(Error::from(ErrorKind::InvalidToken));
-            }
-        };
-
-        let decoded = self.backend.decode_token(token, is_access)?;
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| Error::from(ErrorKind::InvalidIssuer))? // fallback error
-            .as_secs() as usize;
-
-        if decoded.claims.exp < now {
-            return Err(Error::from(ErrorKind::ExpiredSignature));
-        }
-
-        Ok(decoded)
-    }
-}
-
-/// ========================== HS256 Backend ==========================
-struct Hs256KeyPair {
-    access_secret: String,
-    refresh_secret: String,
-}
-
-impl JwtKeyPair for Hs256KeyPair {
-    fn generate_token(&self, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String> {
-        let exp = current_timestamp() + expires_in;
-        let claims = Claims {
-            sub: sub.to_string(),
-            exp,
-            extra: extra.unwrap_or_default(),
-        };
-
-        let secret = if is_access {
-            &self.access_secret
-        } else {
-            &self.refresh_secret
-        };
-
-        encode(&Header::new(Algorithm::HS256), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-    }
-
-    fn decode_token(&self, token: &str, is_access: bool) -> Result<TokenData<Claims>> {
-        let secret = if is_access {
-            &self.access_secret
-        } else {
-            &self.refresh_secret
-        };
-
-        decode::<Claims>(token, &DecodingKey::from_secret(secret.as_bytes()), &Validation::new(Algorithm::HS256))
+        self.backend.decode_token(token, token_type)
     }
 }
 
@@ -147,21 +104,42 @@ struct Rs256KeyPair {
 }
 
 impl JwtKeyPair for Rs256KeyPair {
-    fn generate_token(&self, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String> {
+    fn generate_token(&self, kid: &str, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String> {
         let exp = current_timestamp() + expires_in;
         let claims = Claims {
             sub: sub.to_string(),
             exp,
             extra: extra.unwrap_or_default(),
         };
+        
+        let mut header = Header::new(Algorithm::RS256);
+        header.kid = Some(kid.to_string());
 
         let enc = if is_access { &self.access_enc } else { &self.refresh_enc };
-        encode(&Header::new(Algorithm::RS256), &claims, enc)
+        encode(&header, &claims, enc)
     }
 
-    fn decode_token(&self, token: &str, is_access: bool) -> Result<TokenData<Claims>> {
+    fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>> {
+        let is_access = match token_type {
+            "access" => true,
+            "refresh" => false,
+            _ => {
+                return Err(Error::from(ErrorKind::InvalidToken));
+            }
+        };
         let dec = if is_access { &self.access_dec } else { &self.refresh_dec };
-        decode::<Claims>(token, dec, &Validation::new(Algorithm::RS256))
+        let decoded = decode::<Claims>(token, dec, &Validation::new(Algorithm::RS256))?;
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| Error::from(ErrorKind::InvalidIssuer))? 
+            .as_secs() as usize;
+
+        if decoded.claims.exp < now {
+            return Err(Error::from(ErrorKind::ExpiredSignature));
+        }
+
+        Ok(decoded)
     }
 }
 

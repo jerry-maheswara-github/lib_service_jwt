@@ -1,14 +1,10 @@
-//! # Dokumentasi Crate: JWT dan JWKS
+//! # Crate Documentation: JWT and JWKS
 //!
-//! Crate ini menyediakan fungsionalitas terkait dengan penggunaan **JSON Web Tokens (JWT)** 
-//! dan **JSON Web Key Sets (JWKS)** dalam aplikasi. Crate ini dibagi menjadi beberapa modul:
+//! This crate provides functionality related to the usage of **JSON Web Tokens (JWT)** 
+//! and **JSON Web Key Sets (JWKS)** in applications. The crate is divided into several modules:
 //!
-//! - `model`: Mendefinisikan struktur data yang digunakan dalam aplikasi, termasuk token JWT dan klaim terkait.
-//! - `jwt`: Menyediakan fungsi untuk membuat, memverifikasi, dan mengelola JSON Web Tokens.
-//! - `jwks`: Menyediakan fungsionalitas untuk menangani dan mengelola JSON Web Key Sets.
-
- 
+//! - `model`: Defines the data structures used in the application, including JWT tokens and related claims.
+//! - `jwt`: Provides functions for creating, verifying, and managing JSON Web Tokens.
 
 pub mod model;
 pub mod jwt;
-pub mod jwks;

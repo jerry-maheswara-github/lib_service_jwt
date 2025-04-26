@@ -13,9 +13,9 @@ fn main() {
     let mut extra = HashMap::new();
     extra.insert("role".to_string(), json!("admin"));
 
-    let token = keys.generate_refresh_token("uid99", 60 * 60 * 24 * 7, Some(extra.clone())).unwrap();
-    let pendek = shorten_token(&token);
-    println!("Generated Refresh Token: {}, pendek: {}", token, pendek);
+    let token = keys.generate_access_token("12345","uid99", 60 * 60 * 24 * 7, Some(extra.clone())).unwrap();
+    let shorten_token = shorten_token(&token);
+    println!("Generated Refresh Token: {} , shorten_token: {}", token, shorten_token);
 
     let decoded = keys.decode_token(&token, "refresh").unwrap();
 
