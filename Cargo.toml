@@ -2,14 +2,13 @@
 name = "lib-service-jwt"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <you@example.com>"]
+authors = ["Jerry Maheswara <jerrymaheswara@gmail.com>"]
 description = "Lightweight JWT-based authentication logic with support for access and refresh tokens."
 license = "Apache-2.0"
 repository = "https://github.com/jerry-maheswara-github/lib-service-jwt"
 keywords = ["auth", "jwt", "access-token", "refresh-token", "authentication"]
 readme = "README.md"
 categories = ["authentication", "web-programming"]
-
 
 [dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
