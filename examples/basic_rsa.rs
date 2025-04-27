@@ -1,5 +1,5 @@
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use lib_service_jwt::jwt::{JwtAlgorithm, JwtKeys, shorten_token, current_timestamp};
 
 fn main() {
@@ -15,34 +15,34 @@ fn main() {
     let expires_in = 60 * 60 * 24 * 30;
     let mut extra = HashMap::new();
     
-    // Add roles to the extra claims
     let roles = vec!["admin", "user"];
     extra.insert("roles".to_string(), json!(roles));
 
-    // Add additional claims
     let email = "user123@example.com";
     let permissions = vec!["read", "write", "execute"];
-    let nbf = current_timestamp(); 
+    let iat = current_timestamp();
+    let nbf = current_timestamp();
 
-    let mut audiences = HashSet::new();
-    audiences.insert("my-app-123".to_string());
-    audiences.insert("my-app-456".to_string());
-    extra.insert("aud".to_string(), json!(audiences)); // Adding audience claim
-
+    let audiences: Option<Vec<String>> = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+    extra.insert("aud".to_string(), json!(audiences));  
+    
     extra.insert("email".to_string(), json!(email));
     extra.insert("permissions".to_string(), json!(permissions));
-    extra.insert("nbf".to_string(), json!(nbf)); // Adding audience claim
+    extra.insert("iat".to_string(), json!(iat)); 
+    extra.insert("nbf".to_string(), json!(nbf)); 
 
     let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
     let shorten_token = shorten_token(&token);
     println!("Generated Refresh Token: {} | shorten_token for logging: {}", token, shorten_token);
 
-    let decoded = keys.decode_token(&token, "access").unwrap();
+    let audiences_dec: Option<Vec<String>> = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+    
+    let decoded = keys.decode_token(&token, "access", audiences_dec).unwrap();
 
     println!("Decoded Token Claims: {:?}", decoded.claims);
     assert_eq!(decoded.claims.sub, "user123");
     
-    let roles: Vec<String> = decoded.claims.extra.get("roles")
+    let roles: Vec<_> = decoded.claims.extra.get("roles")
         .and_then(|v| v.as_array())
         .unwrap_or(&vec![])
         .iter()
@@ -51,7 +51,7 @@ fn main() {
 
     assert!(roles.contains(&"admin".to_string()));
 
-    let roles: Vec<String> = decoded.claims.extra.get("roles")
+    let roles: Vec<_> = decoded.claims.extra.get("roles")
         .unwrap()
         .as_array()
         .unwrap()

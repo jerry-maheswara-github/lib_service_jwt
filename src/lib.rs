@@ -1,4 +1,4 @@
-//! # lib_service_jwt — Simple & Extensible JWT Management in Rust
+//! # Scalable JWT Management with Rust
 //! 
 //! **lib_service_jwt** is a lightweight, ergonomic, and extensible library built on top of [`jsonwebtoken`](https://docs.rs/jsonwebtoken) that simplifies working with JSON Web Tokens (JWT) in Rust applications. Designed for production-grade authentication systems, it abstracts the complexity of key handling and token generation, while giving you full control when you need it.
 //! 
@@ -21,7 +21,7 @@
 //! 
 //! ```toml
 //! [dependencies]
-//! lib_service_jwt = "0.1.0" # Replace with the actual version
+//! lib_service_jwt = "0.1.0"
 //! ```
 //! 
 //! ---
@@ -43,10 +43,15 @@
 //! let expires_in = 60 * 60 * 24 * 30;
 //! let mut extra = HashMap::new();
 //! let roles = vec!["admin", "user"]; 
-//! extra.insert("roles".to_string(), json!(roles));
+//! extra.insert("roles".to_string(), json!(roles)); 
+//!
+//! let audiences: Option<Vec<String>> = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+//! extra.insert("aud".to_string(), json!(audiences));  
 //! 
 //! let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
-//! let decoded_token = keys.decode_token(&token, "access").unwrap();
+//! 
+//! let audiences_dec: Option<Vec<String>>  = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+//! let decoded_token = keys.decode_token(&token, "access", audiences_dec).unwrap();
 //! 
 //! println!("User ID: {}", decoded_token.claims.sub);
 //! ```

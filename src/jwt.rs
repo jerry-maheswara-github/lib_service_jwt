@@ -46,16 +46,37 @@ pub trait JwtKeyPair: Send + Sync {
     /// If there is an error generating the token (e.g., due to key issues), it returns an `Err` result.
     fn generate_token(&self, kid: &str, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String>;
 
-    /// Decodes a JWT token and returns its claims.
+    /// Decodes a JWT token and validates its claims.
     ///
-    /// - `token`: The JWT token string to decode.
-    /// - `is_access`: Boolean indicating whether the token is an access token (`true`) or a refresh token (`false`).
+    /// This function decodes a JWT token, validates its audience (`aud`), and checks if the token is expired. 
+    /// It supports both access and refresh tokens, and the appropriate decoding key is chosen based on 
+    /// the `token_type`. The audience (`aud`) is validated dynamically by accepting a `Vec<String>` 
+    /// of audience names passed to the function.
     ///
-    /// Returns a `Result<TokenData<Claims>>`, where `TokenData<Claims>` contains the decoded claims data.
+    /// # Parameters
+    /// - `token`: The JWT token string to decode. This token is expected to be in the correct format 
+    ///   and signed with a valid key.
+    /// - `token_type`: The type of the token, which should either be `"access"` or `"refresh"`. 
+    ///   This determines which decoding key is used.
+    /// - `audiences`: A vector of audience names that are expected to be present in the token's `aud` claim.
+    ///   This vector will be used to validate the `aud` claim in the decoded token.
+    ///
+    /// # Returns
+    /// - `Ok(TokenData<Claims>)`: If the token is successfully decoded and validated, this result will
+    ///   contain the decoded token data and its claims.
+    /// - `Err(Error)`: If there is an error during decoding, validation, or token expiration check, an error 
+    ///   will be returned.
     ///
     /// # Errors
-    /// If the token cannot be decoded (e.g., due to an invalid token or signature), it returns an `Err` result.
-    fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>>;
+    /// The following errors may be returned:
+    /// - `ErrorKind::InvalidToken`: If the token type is invalid or the token cannot be decoded.
+    /// - `ErrorKind::InvalidAudience`: If the token audience is invalid or the token cannot be decoded.
+    /// - `ErrorKind::InvalidIssuer`: If the token's issuer is invalid.
+    /// - `ErrorKind::ExpiredSignature`: If the token's expiration (`exp`) has passed.
+    /// - Any decoding or validation errors related to the JWT decoding process.
+    ///
+    fn decode_token(&self, token: &str, token_type: &str, audiences: Option<Vec<String>>) -> Result<TokenData<Claims>> ;
+
 }
 
 /// A wrapper around a JWT key pair implementation for generating and verifying tokens.
@@ -153,8 +174,8 @@ impl JwtKeys {
         self.backend.generate_token(kid, user_id, expires_in, extra, false)
     }
 
-    pub fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>> {
-        self.backend.decode_token(token, token_type)
+    pub fn decode_token(&self, token: &str, token_type: &str, audiences: Option<Vec<String>>) -> Result<TokenData<Claims>> {
+        self.backend.decode_token(token, token_type, audiences)
     }
 }
 
@@ -182,7 +203,7 @@ impl JwtKeyPair for Rs256KeyPair {
         encode(&header, &claims, enc)
     }
 
-    fn decode_token(&self, token: &str, token_type: &str) -> Result<TokenData<Claims>> {
+    fn decode_token(&self, token: &str, token_type: &str, audiences: Option<Vec<String>>) -> Result<TokenData<Claims>> {
         let is_access = match token_type {
             "access" => true,
             "refresh" => false,
@@ -191,13 +212,22 @@ impl JwtKeyPair for Rs256KeyPair {
             }
         };
         let dec = if is_access { &self.access_dec } else { &self.refresh_dec };
-        let decoded = decode::<Claims>(token, dec, &Validation::new(Algorithm::RS256))?;
-
+        let mut validation = Validation::new(Algorithm::RS256);
+        let audience_slice: Vec<&str> = audiences
+            .as_ref()
+            .map(|aud_list| aud_list.iter().map(AsRef::as_ref).collect())
+            .unwrap_or_else(Vec::new);
+        validation.set_audience(&audience_slice);
+        let decoded = match decode::<Claims>(token, dec, &validation) {
+            Ok(decoded_token) => decoded_token,
+            Err(_e) => {
+                return Err(_e);
+            }
+        };
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| Error::from(ErrorKind::InvalidIssuer))? 
             .as_secs() as usize;
-
         if decoded.claims.exp < now {
             return Err(Error::from(ErrorKind::ExpiredSignature));
         }

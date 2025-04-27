@@ -106,10 +106,11 @@ JFeO+e5Gi3kNadtqWBsaPVCvWJ7WbjZXt9IIUBj3oEHgPW1MhYjnLeAo1Ap4tfV2
         let user_id = "user123";
         let expires_in = 3600;
         let extra = None;
+        let audiences = Some(vec!["my apps".to_string()]);
 
         let token = jwt_keys.generate_access_token(kid, user_id, expires_in, extra).expect("Failed to generate token");
 
-        let decoded = jwt_keys.decode_token(&token, "access").expect("Failed to decode token");
+        let decoded = jwt_keys.decode_token(&token, "access", audiences).expect("Failed to decode token");
 
         assert_eq!(decoded.claims.sub, user_id, "User ID should match");
     }
@@ -130,14 +131,15 @@ JFeO+e5Gi3kNadtqWBsaPVCvWJ7WbjZXt9IIUBj3oEHgPW1MhYjnLeAo1Ap4tfV2
         let user_id = "user123";
         let expires_in = 1;
         let extra = None;
+        let audiences = Some(vec!["my apps".to_string()]);
 
         let token = jwt_keys.generate_access_token(kid, user_id, expires_in, extra).expect("Failed to generate token");
 
         thread::sleep(Duration::from_secs(2));
 
-        let result = jwt_keys.decode_token(&token, "access");
+        let result = jwt_keys.decode_token(&token, "access", audiences);
 
-        eprintln!("{:?}", result);
+        eprintln!("{:?}", result.is_err());
         assert!(result.is_err(), "Token should have expired");
         
     }
