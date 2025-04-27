@@ -1,6 +1,6 @@
-# lib-service-jwt — Simple & Extensible JWT Management in Rust
+# lib_service_jwt — Simple & Extensible JWT Management in Rust
 
-**lib-service-jwt** is a lightweight, ergonomic, and extensible library built on top of [`jsonwebtoken`](https://docs.rs/jsonwebtoken) that simplifies working with JSON Web Tokens (JWT) in Rust applications. Designed for production-grade authentication systems, it abstracts the complexity of key handling and token generation, while giving you full control when you need it.
+**lib_service_jwt** is a lightweight, ergonomic, and extensible library built on top of [`jsonwebtoken`](https://docs.rs/jsonwebtoken) that simplifies working with JSON Web Tokens (JWT) in Rust applications. Designed for production-grade authentication systems, it abstracts the complexity of key handling and token generation, while giving you full control when you need it.
 
 ---
 
@@ -21,7 +21,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-lib-service-jwt = "0.1.0" # Replace with the actual version
+lib_service_jwt = "0.1.0" # Replace with the actual version
 ```
 
 ---
@@ -70,7 +70,7 @@ println!("User ID: {}", decoded_token.claims.sub);
 
 ## 🔑 Generating RSA Private and Public Keys
 
-To generate **RSA private** and **public keys** for use with **lib-service-jwt**, follow these steps:
+To generate **RSA private** and **public keys** for use with **lib_service_jwt**, follow these steps:
 
 ### 1. Install OpenSSL (if not already installed)
 You can install OpenSSL using the appropriate package manager for your system:
@@ -120,9 +120,10 @@ Once you have `access-private.pem`, `access-public.pem`, `refresh-private.pem`, 
 ---
 # 🧩 **JWK (JSON Web Key)** 
 
-JSON Web Token (JWT) is an open standard that defines a way for securely transmitting information between parties as a 
-JSON object. This information can be verified and trusted since it is signed using 
-a public/private key pair (for example, RS256).
+A **JSON Web Key** (JWK) is a JSON data structure that represents a cryptographic key. 
+It is used in JSON Web Signature (JWS) or JSON Web Encryption (JWE) to help verify or sign JSON Web Tokens (JWTs). 
+JWKs are often used to securely share public keys.
+
 
 You can distribute your `jwks.json` file in a standard format by placing it under the `.well-known/` directory in your web server. This follows the convention used by many services and helps ensure your JWKs are accessible for verification by others.
 
@@ -217,7 +218,7 @@ $ nano jwks.json
 
 ## 📄 License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).
 
 ---
 
