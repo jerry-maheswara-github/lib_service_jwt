@@ -38,12 +38,17 @@ let algo = JwtAlgorithm::RS256 {
     refresh_public: include_bytes!("../keys/refresh-public.pem").to_vec(),
 };
 
-let keys = JwtKeys::from_algorithm(algo).unwrap();
+let kid = "some-key-id";
+let user_id = "user123";
+let expires_in = 60 * 60 * 24 * 30;
+let mut extra = HashMap::new();
+let roles = vec!["admin", "user"]; 
+extra.insert("roles".to_string(), json!(roles));
 
-let token = keys.generate_access_token("key-id", "user123", 3600, None).unwrap();
-let claims = keys.decode_token(&token, "access").unwrap();
+let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
+let decoded_token = keys.decode_token(&token, "access").unwrap();
 
-println!("User ID: {}", claims.claims.sub);
+println!("User ID: {}", decoded_token.claims.sub);
 ```
 
 ---
@@ -51,7 +56,7 @@ println!("User ID: {}", claims.claims.sub);
 ## 🛠️ Modules
 
 - **`jwt`** – Core logic for generating, decoding, and verifying JWTs.
-- **`model`** – Contains the `Claims` structure and other supporting types.
+- **`model`** – Contains the `Claims` structure.
 
 ---
 
@@ -63,12 +68,12 @@ println!("User ID: {}", claims.claims.sub);
 
 ---
 
-## 📝 Generating RSA Private and Public Keys
+## 🔑 Generating RSA Private and Public Keys
 
-To generate RSA private and public keys for use with **lib-service-jwt**, you can use OpenSSL. Below are the steps for generating the keys:
+To generate **RSA private** and **public keys** for use with **lib-service-jwt**, follow these steps:
 
-### 1. Install OpenSSL (if you haven't already)
-You can install OpenSSL using your package manager:
+### 1. Install OpenSSL (if not already installed)
+You can install OpenSSL using the appropriate package manager for your system:
 
 - **macOS**: `brew install openssl`
 - **Ubuntu**: `sudo apt-get install openssl`
@@ -88,11 +93,11 @@ For **refresh** tokens, run this command:
 openssl genpkey -algorithm RSA -out refresh-private.pem -pkeyopt rsa_keygen_bits:2048
 ```
 
-These commands will generate RSA private keys encrypted with AES256 and save them to `access-private.pem` and `refresh-private.pem` respectively. You can remove the `-aes256` flag if you don't want encryption.
+These commands will generate **RSA private keys** encrypted with AES256 and save them to `access-private.pem` and `refresh-private.pem`.
 
 ### 3. Generate the RSA Public Keys
 
-Once you have the private keys, you can extract the corresponding public keys using these commands:
+Once you have the private keys, you can extract the corresponding public keys with the following commands:
 
 For **access** tokens:
 
@@ -110,11 +115,105 @@ These commands will generate the corresponding public keys and save them to `acc
 
 ### 4. Use the Keys in Your Project
 
-Once you have the `access-private.pem`, `access-public.pem`, `refresh-private.pem`, and `refresh-public.pem` keys, you can include them in your project by embedding them in your code or loading them from disk.
+Once you have `access-private.pem`, `access-public.pem`, `refresh-private.pem`, and `refresh-public.pem`, you can include these keys in your project by embedding them directly in your code or loading them from disk.
 
 ---
+# 🧩 **JWK (JSON Web Key)** 
+
+JSON Web Token (JWT) is an open standard that defines a way for securely transmitting information between parties as a 
+JSON object. This information can be verified and trusted since it is signed using 
+a public/private key pair (for example, RS256).
+
+You can distribute your `jwks.json` file in a standard format by placing it under the `.well-known/` directory in your web server. This follows the convention used by many services and helps ensure your JWKs are accessible for verification by others.
+
+For example, the JWK set can be accessible at:
+
+```
+https://yourdomain.com/.well-known/jwks.json
+```
+
+This makes it easier for clients or services to automatically fetch and use your public keys for validating JWTs.
+
+To create a **JWK** (JSON Web Key), you need to extract two key components from the RSA public key: **modulus** (`n`) and **exponent** (`e`).
+
+### 1. Extract Modulus (n) and Exponent (e) from the Public Key
+
+This command will extract the **modulus** and **public exponent** 
+(which is usually `65537` in many RSA implementations) and display it in the terminal.
+> **Note:**
+> The string has been truncated for readability.
+> The full value is much longer.
+
+````
+$ openssl pkey -in access-public.pem -pubin -noout -text
+
+Public-Key: (2048 bit)
+Modulus:
+    00:b5:f2:5a:2e:bc:d7:20:b5:20:d5:4d:cd:d4:a5:
+    7c:c8:9a:fd:d8:61:e7:e4:eb:58:65:1e:ea:5a:4d:
+    4c:73:87:32:e0:91:a3:92:56:2e:a7:bc:1e:32:30:
+    43:f5:fd:db:05:5a:08:b2:25:15:5f:ac:4d ...
+    ... 76:e9
+Exponent: 65537 (0x10001)
+````
+
+### 2. Convert Modulus and Exponent to Base64url Encoding
+
+JWK requires **base64url encoding** for both the modulus (`n`) and the public exponent (`e`). You can convert them using the `base64` command in bash. Here’s how:
+
+#### Encode Modulus (n) to Base64url:
+
+```bash
+echo "00:b5:f2:5a:2e:bc:d7:20:b5:20:d5:4d:cd:d4:a5:
+      7c:c8:9a:fd:d8:61:e7:e4:eb:58:65:1e:ea:5a:4d:
+      4c:73:87:32:e0:91:a3:92:56:2e:a7:bc:1e:32:30:
+      43:f5:fd:db:05:5a:08:b2:25:15:5f:ac:4d ...
+      ... 76:e9" | tr -d ": \n" | xxd -p -r | base64 | tr +/ -_ | tr -d "=\n"
+```
+Result:
+```
+3drYbtHpiwwif5JoaYTCeQbsLRSY2i4 ... PW1MhYjnLeAo1Ap4tfV26Q
+```
 
 
+#### Encode Exponent (e) to Base64url:
+
+```bash
+$ echo 010001 | xxd -p -r | base64
+```
+Result:
+```
+AQAB
+```
+
+### 3. Create the JWK in JSON Format
+
+Now you can create the **JWK (JSON Web Key)** in JSON format with the encoded modulus and exponent. Here’s how to do it using bash:
+
+```bash
+$ nano jwks.json
+
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "your-key-id", 
+      "use": "sig",
+      "n": "3drYbtHpiwwif5JoaYTCeQbsLRSY2i4 ... PW1MhYjnLeAo1Ap4tfV26Q",
+      "e": "AQAB"
+    }
+  ]
+}
+
+```
+
+### Explanation:
+- **`kty`**: The key type, here we use RSA.
+- **`kid`**: Key ID, you can set it to a unique ID for your key.
+- **`use`**: Indicates the use of this key, here it is used for signing (`sig`).
+- **`n`** and **`e`**: The modulus and public exponent, encoded in **base64url** format.
+
+---
 
 ## 📄 License
 
