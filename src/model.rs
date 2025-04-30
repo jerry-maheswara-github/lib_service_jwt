@@ -1,3 +1,7 @@
+//! Defines data models used in JWT encoding and decoding processes.
+//!
+//! This module contains serializable structures for JWT claims and any additional metadata
+//! that may be embedded into a token payload (e.g., user roles, custom fields).
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

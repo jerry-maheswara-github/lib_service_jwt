@@ -1,8 +1,17 @@
+//! Provides core functionality for encoding and decoding JSON Web Tokens (JWT).
+//!
+//! This module handles the creation of access tokens, token validation, and decoding,
+//! using the `jsonwebtoken` crate as the underlying implementation.
+//!
 use crate::model::Claims;
-use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation, errors::{Error, ErrorKind, Result}};
+use jsonwebtoken::{encode, decode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use crate::errors::JwtServiceError;
+
+type Result<T> = std::result::Result<T, JwtServiceError>;
+
 
 /// The `JwtAlgorithm` enum defines the algorithm used for creating and verifying JWTs.
 ///
@@ -148,6 +157,24 @@ pub struct JwtKeys {
 }
 
 impl JwtKeys {
+    /// Creates an instance of `Self` from the provided JWT algorithm.
+    ///
+    /// This function takes a ['JwtAlgorithm'] as input and returns a ['Result'] containing
+    /// the constructed instance if successful, or an error if any of the keys fail to parse.
+    ///
+    /// Currently, only the [`JwtAlgorithm::RS256`] variant is supported. It initializes
+    /// the RSA key pair for both access and refresh tokens using the provided PEM-encoded keys.
+    ///
+    /// # Arguments
+    ///
+    /// * `algo` - A [`JwtAlgorithm`] containing the private and public RSA keys
+    ///   for both access and refresh tokens.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Self)` if all RSA keys are successfully parsed.
+    /// * `Err` if any key fails to parse from the PEM data.
+    ///
     pub fn from_algorithm(algo: JwtAlgorithm) -> Result<Self> {
         match algo { 
             JwtAlgorithm::RS256 {
@@ -200,36 +227,34 @@ impl JwtKeyPair for Rs256KeyPair {
         header.kid = Some(kid.to_string());
 
         let enc = if is_access { &self.access_enc } else { &self.refresh_enc };
-        encode(&header, &claims, enc)
+        encode(&header, &claims, enc).map_err(JwtServiceError::from)
     }
 
     fn decode_token(&self, token: &str, token_type: &str, audiences: Option<Vec<String>>) -> Result<TokenData<Claims>> {
         let is_access = match token_type {
             "access" => true,
             "refresh" => false,
-            _ => {
-                return Err(Error::from(ErrorKind::InvalidToken));
-            }
+            _ => return Err(JwtServiceError::InvalidToken),
         };
-        let dec = if is_access { &self.access_dec } else { &self.refresh_dec };
+
+        let dec_key: &DecodingKey = if is_access { &self.access_dec } else { &self.refresh_dec };
+
         let mut validation = Validation::new(Algorithm::RS256);
-        let audience_slice: Vec<&str> = audiences
-            .as_ref()
-            .map(|aud_list| aud_list.iter().map(AsRef::as_ref).collect())
-            .unwrap_or_else(Vec::new);
-        validation.set_audience(&audience_slice);
-        let decoded = match decode::<Claims>(token, dec, &validation) {
-            Ok(decoded_token) => decoded_token,
-            Err(_e) => {
-                return Err(_e);
-            }
-        };
+
+        if let Some(auds) = audiences {
+            let aud_refs: Vec<&str> = auds.iter().map(String::as_str).collect();
+            validation.set_audience(&aud_refs);
+        }
+
+        let decoded = decode::<Claims>(token, dec_key, &validation)
+            .map_err(JwtServiceError::from)?;
+
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|_| Error::from(ErrorKind::InvalidIssuer))? 
+            .map_err(|_| JwtServiceError::InvalidToken)?
             .as_secs() as usize;
         if decoded.claims.exp < now {
-            return Err(Error::from(ErrorKind::ExpiredSignature));
+            return Err(JwtServiceError::TokenExpired);
         }
 
         Ok(decoded)
