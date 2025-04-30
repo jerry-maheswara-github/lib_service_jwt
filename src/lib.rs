@@ -21,7 +21,7 @@
 //! 
 //! ```toml
 //! [dependencies]
-//! lib_service_jwt = "0.1.0"
+//! lib_service_jwt = "0.1.1"
 //! ```
 //! 
 //! ---
@@ -37,6 +37,8 @@
 //!     refresh_private: include_bytes!("../keys/refresh-private.pem").to_vec(),
 //!     refresh_public: include_bytes!("../keys/refresh-public.pem").to_vec(),
 //! };
+//! 
+//! let keys = JwtKeys::from_algorithm(algo).expect("Failed to create JwtKeys");
 //! 
 //! let kid = "some-key-id";
 //! let user_id = "user123";
@@ -202,7 +204,7 @@
 //!   "keys": [
 //!     {
 //!       "kty": "RSA",
-//!       "kid": "your-key-id", 
+//!       "kid": "some-key-id", 
 //!       "use": "sig",
 //!       "n": "3drYbtHpiwwif5JoaYTCeQbsLRSY2i4 ... PW1MhYjnLeAo1Ap4tfV26Q",
 //!       "e": "AQAB"
@@ -244,7 +246,18 @@
 //! Pull requests, issues, and feedback are welcome!  
 //! If you find this crate useful, give it a ⭐ and share it with others in the Rust community.
 //! 
-//! 
+//!
+//! ---
+//!
+//! ## 📦 Changelog
+//!
+//! ### v0.1.1
+//! - **Added `JwtServiceError`**: A structured error enum mirroring variants from `jsonwebtoken::errors`, allowing more transparent and fine-grained error handling.
+//! - **Implemented `From<jsonwebtoken::errors::Error>`**: Enables seamless conversion from raw JWT errors into the custom `JwtServiceError` enum.
+//! - **Added `thiserror` dependency**: Used for ergonomic and readable custom error definitions via the `#[derive(Error)]` macro.
+//! - **Minor improvements**: Code cleanup, improved internal naming consistency, and enhanced documentation.
+//!
 
 pub mod model;
 pub mod jwt;
+pub mod errors;
