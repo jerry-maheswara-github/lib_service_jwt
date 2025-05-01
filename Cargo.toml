@@ -1,6 +1,6 @@
 [package]
 name = "lib_service_jwt"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Jerry Maheswara <jerrymaheswara@gmail.com>"]
 description = "Scalable JWT Management with Rust."
@@ -8,6 +8,7 @@ license = "Apache-2.0"
 repository = "https://github.com/jerry-maheswara-github/lib_service_jwt"
 keywords = ["auth", "jwt", "access-token", "refresh-token", "authentication"]
 readme = "README.md"
+documentation = "https://docs.rs/lib_service_jwt"
 categories = ["authentication", "web-programming"]
 
 [dependencies]

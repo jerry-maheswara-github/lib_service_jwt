@@ -15,71 +15,92 @@
 //! These errors can be mapped to gRPC responses using a trait like `ToStatus`,
 //! or converted to logs/telemetry events for observability.
 //!
-use thiserror::Error;
 use jsonwebtoken::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 
-#[derive(Debug, Error)]
+/// Represents errors that can occur during JWT processing and validation.
+#[derive(Debug, thiserror::Error)]
 pub enum JwtServiceError {
+    /// The token is malformed, invalid, or could not be decoded.
     #[error("Invalid token")]
     InvalidToken,
 
+    /// The token's signature is invalid or has been tampered with.
     #[error("Invalid signature")]
     InvalidSignature,
 
+    /// The provided ECDSA key is not valid or cannot be parsed.
     #[error("Invalid ECDSA key")]
     InvalidEcdsaKey,
 
+    /// Signing with RSA failed during token creation.
     #[error("RSA signing failed")]
     RsaSigningFailed,
 
+    /// The RSA key provided is invalid or cannot be parsed.
     #[error("Invalid RSA key")]
     InvalidRsaKey(String),
 
+    /// The token has expired based on the `exp` claim.
     #[error("Token has expired")]
     TokenExpired,
 
+    /// No signing algorithm was specified or found.
     #[error("Missing algorithm")]
     MissingAlgorithm,
 
+    /// A required claim is missing from the token payload.
     #[error("Missing required claim: {0}")]
     MissingClaim(String),
 
+    /// The issuer (`iss` claim) is invalid or does not match expected value.
     #[error("Invalid issuer")]
     InvalidIssuer,
 
+    /// The audience (`aud` claim) is invalid or not accepted.
     #[error("Invalid audience")]
     InvalidAudience,
 
+    /// The subject (`sub` claim) is invalid or not recognized.
     #[error("Invalid subject")]
     InvalidSubject,
 
+    /// The token is not yet valid (`nbf` claim is in the future).
     #[error("Immature signature")]
     ImmatureSignature,
 
+    /// The specified or inferred algorithm is not supported or recognized.
     #[error("Invalid algorithm")]
     InvalidAlgorithm,
 
+    /// The algorithm name provided is not a valid or recognized name.
     #[error("Invalid algorithm name")]
     InvalidAlgorithmName,
 
+    /// The key format is invalid (e.g., PEM/DER parsing failed).
     #[error("Invalid key format")]
     InvalidKeyFormat,
 
+    /// An error occurred while decoding a Base64-encoded field.
     #[error("Base64 decoding error: {0}")]
     Base64Error(String),
 
+    /// Failed to parse or serialize a JWT payload as JSON.
     #[error("JSON error: {0}")]
     JsonError(String),
 
+    /// UTF-8 decoding failed for a string in the token.
     #[error("UTF-8 error: {0}")]
     Utf8Error(String),
 
+    /// A general cryptographic error occurred (e.g., during signing or verification).
     #[error("Crypto error: {0}")]
     CryptoError(String),
 
+    /// A non-specific error related to JWT processing.
     #[error("Unknown JWT error: {0}")]
     JwtError(String),
 
+    /// The system clock is invalid or failed to retrieve time.
     #[error("System time error")]
     InvalidSystemTime,
 }
