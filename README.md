@@ -18,87 +18,72 @@
 
 ---
 
-## 📦 Installation
-
-Add the following to your `Cargo.toml`:
-
-```toml
-[dependencies]
-lib_service_jwt = "0.1.2"
-```
-
----
-
 ## 🚀 Quick Start
 
 ### 🔐 Using RS256 (RSA)
 
-```rust
-use lib_service_jwt::jwt::{JwtAlgorithm, JwtKeys};
-use std::collections::HashMap;
-use serde_json::json;
+```code
+ use lib_service_jwt::jwt::{JwtAlgorithm, JwtKeys};
+ use std::collections::HashMap;
+ use serde_json::json;
 
-fn main() {
-    let algo = JwtAlgorithm::RS256 {
-        access_private: include_bytes!("../keys/rsa/access-private.pem").to_vec(),
-        access_public: include_bytes!("../keys/rsa/access-public.pem").to_vec(),
-        refresh_private: include_bytes!("../keys/rsa/refresh-private.pem").to_vec(),
-        refresh_public: include_bytes!("../keys/rsa/refresh-public.pem").to_vec(),
-    };
+ let algo = JwtAlgorithm::RS256 {
+    access_private: include_bytes!("../examples/rsa/access-private.pem").to_vec(),
+    access_public: include_bytes!("../examples/rsa/access-public.pem").to_vec(),
+    refresh_private: include_bytes!("../examples/rsa/refresh-private.pem").to_vec(),
+    refresh_public: include_bytes!("../examples/rsa/refresh-public.pem").to_vec(),
+ };
 
-    let keys = JwtKeys::from_algorithm(algo).expect("Failed to create JwtKeys");
+ let keys = JwtKeys::from_algorithm(algo).expect("Failed to create JwtKeys");
 
-    let kid = "rsa-key-id";
-    let user_id = "user123";
-    let expires_in = 60 * 60 * 24 * 30;
-    let mut extra = HashMap::new();
-    let roles = vec!["admin", "user"]; 
-    extra.insert("roles".to_string(), json!(roles)); 
+ let kid = "rsa-key-id";
+ let user_id = "user123";
+ let expires_in = 60 * 60 * 24 * 30;
+ let mut extra = HashMap::new();
+ let roles = vec!["admin", "user"];
+ extra.insert("roles".to_string(), json!(roles));
 
-    let audiences = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
-    extra.insert("aud".to_string(), json!(audiences.clone()));  
+ let audiences = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+ extra.insert("aud".to_string(), json!(audiences.clone()));
 
-    let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
-    let decoded_token = keys.decode_token(&token, "access", audiences).unwrap();
+ let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
+ let decoded_token = keys.decode_token(&token, "access", audiences).unwrap();
 
-    println!("User ID: {}", decoded_token.claims.sub);
-}
+ println!("User ID: {}", decoded_token.claims.sub);
 ```
 
 ---
 
 ### 🧬 Using ES256 (ECDSA with P-256)
 
-```rust
-use lib_service_jwt::jwt::{JwtAlgorithm, JwtKeys};
-use std::collections::HashMap;
-use serde_json::json;
+```code
+ use lib_service_jwt::jwt::{JwtAlgorithm, JwtKeys};
+ use std::collections::HashMap;
+ use serde_json::json;
 
-fn main() {
-    let algo = JwtAlgorithm::ES256 {
-        access_private: include_bytes!("../examples/ec/ec-access-private.pem").to_vec(),
-        access_public: include_bytes!("../examples/ec/ec-access-public.pem").to_vec(),
-        refresh_private: include_bytes!("../examples/ec/ec-refresh-private.pem").to_vec(),
-        refresh_public: include_bytes!("../examples/ec/ec-refresh-public.pem").to_vec(),
-    };
+ let algo = JwtAlgorithm::ES256 {
+    access_private: include_bytes!("../examples/ec/ec-access-private.pem").to_vec(),
+    access_public: include_bytes!("../examples/ec/ec-access-public.pem").to_vec(),
+    refresh_private: include_bytes!("../examples/ec/ec-refresh-private.pem").to_vec(),
+    refresh_public: include_bytes!("../examples/ec/ec-refresh-public.pem").to_vec(),
+ };
 
-    let keys = JwtKeys::from_algorithm(algo).expect("Failed to create JwtKeys");
+ let keys = JwtKeys::from_algorithm(algo).expect("Failed to create JwtKeys");
 
-    let kid = "ec-key-id";
-    let user_id = "user123";
-    let expires_in = 60 * 60 * 24 * 30;
-    let mut extra = HashMap::new();
-    let roles = vec!["admin", "user"]; 
-    extra.insert("roles".to_string(), json!(roles)); 
+ let kid = "ec-key-id";
+ let user_id = "user123";
+ let expires_in = 60 * 60 * 24 * 30;
+ let mut extra = HashMap::new();
+ let roles = vec!["admin", "user"];
+ extra.insert("roles".to_string(), json!(roles));
 
-    let audiences = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
-    extra.insert("aud".to_string(), json!(audiences.clone()));  
+ let audiences = Some(vec!["myApp1".to_string(), "myApp2".to_string()]);
+ extra.insert("aud".to_string(), json!(audiences.clone()));
 
-    let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
-    let decoded_token = keys.decode_token(&token, "access", audiences).unwrap();
+ let token = keys.generate_access_token(kid, user_id, expires_in, Some(extra.clone())).unwrap();
+ let decoded_token = keys.decode_token(&token, "access", audiences).unwrap();
 
-    println!("User ID: {}", decoded_token.claims.sub);
-}
+ println!("User ID: {}", decoded_token.claims.sub);
 ```
 
 ---
@@ -323,7 +308,7 @@ fn main() -> Result<(), JwtServiceError> {
         access_private: include_bytes!("../examples/ec/ec-access-private.pem").to_vec(),
         access_public: include_bytes!("../examples/ec/ec-access-public.pem").to_vec(),
         refresh_private: include_bytes!("../examples/ec/ec-refresh-private.pem").to_vec(),
-        refresh_public: include_bytes!("../examples/ec/ec-refresh-public.pem").to_vec(), 
+        refresh_public: include_bytes!("../examples/ec/ec-refresh-public.pem").to_vec(),
     })?;
     Ok(())
 }

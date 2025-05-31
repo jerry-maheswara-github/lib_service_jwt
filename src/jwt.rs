@@ -79,7 +79,6 @@ pub trait JwtKeyPair: Send + Sync {
     /// # Returns
     ///
     /// Returns the signed JWT string on success, or a [`JwtServiceError`] on failure.
-
     fn generate_token(&self, kid: &str, sub: &str, expires_in: usize, extra: Option<HashMap<String, Value>>, is_access: bool) -> Result<String>;
 
     /// Decodes a JWT token and validates its claims.
