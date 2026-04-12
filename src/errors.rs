@@ -92,10 +92,6 @@ pub enum JwtServiceError {
     #[error("UTF-8 error: {0}")]
     Utf8Error(String),
 
-    /// A general cryptographic error occurred (e.g., during signing or verification).
-    #[error("Crypto error: {0}")]
-    CryptoError(String),
-
     /// A non-specific error related to JWT processing.
     #[error("Unknown JWT error: {0}")]
     JwtError(String),
@@ -126,7 +122,6 @@ impl From<JwtError> for JwtServiceError {
             JwtErrorKind::Base64(e) => JwtServiceError::Base64Error(e.to_string()),
             JwtErrorKind::Json(e) => JwtServiceError::JsonError(e.to_string()),
             JwtErrorKind::Utf8(e) => JwtServiceError::Utf8Error(e.to_string()),
-            JwtErrorKind::Crypto(e) => JwtServiceError::CryptoError(e.to_string()),
             _ => JwtServiceError::JwtError(err.to_string()),
         }
     }
